@@ -11,6 +11,9 @@ const Home: NextPage = () => {
       <Head>
         <title>Poller</title>
       </Head>
+      <div>
+        <Link href="/create"><a>Create a poll</a></Link>
+      </div>
       {!data ? (
         <Link href="/api/auth/signin">
           <button>Log in yo</button>

@@ -1,8 +1,38 @@
 import { createRouter } from "./context";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import { nanoid } from "nanoid";
 
 export const pollRouter = createRouter()
+  .mutation("create-poll", {
+    input: z.object({
+      title: z.string(),
+      choice1: z.string(),
+      choice2: z.string(),
+    }),
+    async resolve({ ctx, input }) {
+      return await ctx.prisma.poll.create({
+        data: {
+          id: nanoid(),
+          userId: ctx.session?.user?.id,
+          title: input.title,
+          expires: new Date(Date.now() + 1000 * 60 * 60 * 24),
+          choices: {
+            createMany: {
+              data: [
+                {
+                  text: input.choice1,
+                },
+                {
+                  text: input.choice2,
+                },
+              ],
+            },
+          },
+        },
+      });
+    },
+  })
   .query("get-poll", {
     input: z.object({
       id: z.string(),
