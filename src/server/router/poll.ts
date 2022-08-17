@@ -1,5 +1,5 @@
 import { createRouter } from "./context";
-import { z } from "zod";
+import { string, z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { nanoid } from "nanoid";
 
@@ -9,6 +9,7 @@ export const pollRouter = createRouter()
       title: z.string(),
       choice1: z.string(),
       choice2: z.string(),
+      expires: z.date().optional(),
     }),
     async resolve({ ctx, input }) {
       return await ctx.prisma.poll.create({
@@ -16,7 +17,7 @@ export const pollRouter = createRouter()
           id: nanoid(),
           userId: ctx.session?.user?.id,
           title: input.title,
-          expires: new Date(Date.now() + 1000 * 60 * 60 * 24),
+          expires: input.expires ?? new Date(Date.now() + 1000 * 60 * 60 * 24),
           choices: {
             createMany: {
               data: [
@@ -45,15 +46,41 @@ export const pollRouter = createRouter()
         },
         include: {
           responses: true,
+          choices: true,
         },
       });
 
       if (!poll) {
         throw new TRPCError({
           code: "NOT_FOUND",
+          message: "Poll cannot be found.",
         });
       }
-      return poll;
+
+      const collatedResponses = poll.responses.reduce<Record<string, number>>(
+        (acc, curr) => {
+          acc[curr.choiceId]++;
+          return acc;
+        },
+        poll.choices.reduce<Record<string, number>>((acc, curr) => {
+          acc[curr.id] = 0;
+          return acc;
+        }, {})
+      );
+
+      return {
+        ...poll,
+        responses: collatedResponses,
+      };
+    },
+  })
+  .mutation("set-vote", {
+    input: z.object({
+      pollId: z.string(),
+      choiceId: z.string(),
+    }),
+    async resolve({ ctx, input }) {
+      return null;
     },
   })
   .middleware(({ ctx, next }) => {

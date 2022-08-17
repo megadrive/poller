@@ -9,6 +9,7 @@ import { SubmitHandler, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { trpc } from "../utils/trpc";
+import { useRouter } from "next/router";
 
 interface CreatePollProps {
   session?: Session | null;
@@ -25,6 +26,7 @@ const FormSchema = z
     title: z.string().min(3, "Must be at least 3 characters"),
     choice1: z.string().min(1, "Enter something."),
     choice2: z.string().min(1, "Enter something."),
+    expires: z.string().optional(),
   })
   .required();
 
@@ -32,6 +34,7 @@ const textInputStyle =
   "border-gray-300 border rounded-xl text-lg px-2 py-1 active:border-gray-700 my-2";
 
 const CreatePoll: NextPage<CreatePollProps> = () => {
+  const router = useRouter();
   const {
     register,
     formState: { errors },
@@ -44,11 +47,15 @@ const CreatePoll: NextPage<CreatePollProps> = () => {
 
   const onSubmit: SubmitHandler<FormValues> = async (data) => {
     // create the pooll bro
-    await createPoll.mutateAsync({
+    const poll = await createPoll.mutateAsync({
       title: data.title,
       choice1: data.choice1,
       choice2: data.choice2,
     });
+
+    if (!createPoll.isError) {
+      router.push(`/${poll.id}`);
+    }
   };
 
   return (
@@ -58,6 +65,7 @@ const CreatePoll: NextPage<CreatePollProps> = () => {
       </h1>
       <div>
         <form onSubmit={handleSubmit(onSubmit)}>
+          <div>{createPoll.isError ? createPoll.error.message : ""}</div>
           <div>
             <div className="text-xl text-right">Title of poll</div>
             <div>
@@ -78,6 +86,15 @@ const CreatePoll: NextPage<CreatePollProps> = () => {
                 {errors.choice2?.message ?? ""}
               </div>
               <input className={textInputStyle} {...register("choice2")} />
+            </div>
+          </div>
+          <div>
+            <div className="text-xl text-right">Options</div>
+            <div>
+              <div className="text-red-500">
+                {errors.choice1?.message ?? ""}
+              </div>
+              <input className={textInputStyle} {...register("choice1")} />
             </div>
           </div>
           <div>
