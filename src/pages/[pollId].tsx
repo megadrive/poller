@@ -6,12 +6,18 @@ import {
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { useState } from "react";
+import { SubmitHandler, useForm } from "react-hook-form";
 import { trpc } from "../utils/trpc";
 import { authOptions } from "./api/auth/[...nextauth]";
 
 interface DisplayPollProps {
   session?: Session | null;
   query?: string;
+}
+interface VotePollValues {
+  userId?: string;
+  pollId: string;
+  choiceId: string;
 }
 const DisplayPoll: NextPage<DisplayPollProps> = () => {
   const router = useRouter();
@@ -29,7 +35,7 @@ const DisplayPoll: NextPage<DisplayPollProps> = () => {
       id: pollId,
     },
   ]);
-  const setVote = trpc.useMutation(["poll.set-vote"]);
+  const setVoteMutation = trpc.useMutation(["poll.set-vote"]);
   if (error && error.data) {
     switch (error.data?.code) {
       case "NOT_FOUND":
@@ -41,6 +47,18 @@ const DisplayPoll: NextPage<DisplayPollProps> = () => {
   }
 
   const [userVote, setUserVote] = useState<string>();
+  const chooseVote = (choiceId: string) => {
+    setUserVote(choiceId);
+    setValue("choiceId", choiceId);
+  };
+  const {
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<VotePollValues>();
+  const onSubmit: SubmitHandler<VotePollValues> = (data) => {
+    alert(JSON.stringify(data, null, 2));
+  };
   return (
     <main className="container mx-auto min-h-screen flex flex-col justify-center items-center">
       <Head>
@@ -51,28 +69,35 @@ const DisplayPoll: NextPage<DisplayPollProps> = () => {
           <h1 className="text-5xl font-extrabold font-sans white">
             {poll.title}
           </h1>
-          <div className="w-1/3">
-            <div className="flex justify-center items-center">
-              {poll.choices.map((choice) => (
-                <div
-                  key={choice.id}
-                  onClick={() => setUserVote(choice.id)}
-                  className="w-1/2 h-36"
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div>
+              <div className="text-red-600">
+                {errors.choiceId ? "You need to choose something!" : ""}
+              </div>
+              <div className="flex flex-row justify-center items-center w-full">
+                {poll.choices.map((choice) => (
+                  <div
+                    key={choice.id}
+                    onClick={() => chooseVote(choice.id)}
+                    className={`w-1/2 h-36 flex-grow ${
+                      userVote === choice.id ? "bg-red-300" : ""
+                    }`}
+                  >
+                    {choice.text}. Votes: {poll.responses[choice.id]}
+                  </div>
+                ))}
+              </div>
+              <div>
+                <button
+                  type="submit"
+                  disabled={setVoteMutation.isLoading}
+                  className="rounded-full bg-blue-300 font-boldest w-full h-12"
                 >
-                  {choice.text}. Votes: {poll.responses[choice.id]}
-                </div>
-              ))}
+                  {!setVoteMutation.isLoading ? "Vote!" : "Voting.."}
+                </button>
+              </div>
             </div>
-            {/* <div>
-              <button
-                type="submit"
-                disabled={setVote.isLoading}
-                className="rounded-full bg-blue-300 font-boldest w-full h-12"
-              >
-                {!setVote.isLoading ? "Vote!" : "Voting.."}
-              </button>
-            </div> */}
-          </div>
+          </form>
         </>
       ) : (
         "test"

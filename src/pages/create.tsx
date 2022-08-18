@@ -88,7 +88,7 @@ const CreatePoll: NextPage<CreatePollProps> = () => {
               <input className={textInputStyle} {...register("choice2")} />
             </div>
           </div>
-          <div>
+          {/* <div>
             <div className="text-xl text-right">Options</div>
             <div>
               <div className="text-red-500">
@@ -96,7 +96,7 @@ const CreatePoll: NextPage<CreatePollProps> = () => {
               </div>
               <input className={textInputStyle} {...register("choice1")} />
             </div>
-          </div>
+          </div> */}
           <div>
             <button
               type="submit"
