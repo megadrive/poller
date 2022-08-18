@@ -22,6 +22,13 @@ interface VotePollValues {
 
 const DisplayPoll: NextPage<DisplayPollProps> = ({ session }) => {
   const router = useRouter();
+  const [userVote, setUserVote] = useState<string>();
+  const {
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<VotePollValues>();
+
   let { pollId } = router.query;
   if (Array.isArray(pollId)) {
     pollId = pollId[0];
@@ -54,18 +61,11 @@ const DisplayPoll: NextPage<DisplayPollProps> = ({ session }) => {
 
   const setVoteMutation = trpc.useMutation(["poll.set-vote"]);
 
-  const [userVote, setUserVote] = useState<string>();
   const chooseVote = (choiceId: string) => {
     setUserVote(choiceId);
     setValue("choiceId", choiceId);
     console.log({ choiceId });
   };
-
-  const {
-    handleSubmit,
-    setValue,
-    formState: { errors },
-  } = useForm<VotePollValues>();
 
   const onSubmit: SubmitHandler<VotePollValues> = async (data) => {
     // Vote!
