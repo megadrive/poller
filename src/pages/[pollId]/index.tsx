@@ -7,19 +7,20 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import { useState } from "react";
 import { SubmitHandler, useForm } from "react-hook-form";
-import { trpc } from "../utils/trpc";
-import { authOptions } from "./api/auth/[...nextauth]";
+import { trpc } from "../../utils/trpc";
+import { authOptions } from "../api/auth/[...nextauth]";
+import { SpinningCircles } from "react-loading-icons";
 
 interface DisplayPollProps {
   session?: Session | null;
-  query?: string;
 }
+
 interface VotePollValues {
   userId?: string;
-  pollId: string;
   choiceId: string;
 }
-const DisplayPoll: NextPage<DisplayPollProps> = () => {
+
+const DisplayPoll: NextPage<DisplayPollProps> = ({ session }) => {
   const router = useRouter();
   let { pollId } = router.query;
   if (Array.isArray(pollId)) {
@@ -35,7 +36,12 @@ const DisplayPoll: NextPage<DisplayPollProps> = () => {
       id: pollId,
     },
   ]);
-  const setVoteMutation = trpc.useMutation(["poll.set-vote"]);
+
+  if (poll && poll.expires.valueOf() < Date.now()) {
+    // Poll is expired, redirect to results.
+    router.push(`/${pollId}/results`);
+  }
+
   if (error && error.data) {
     switch (error.data?.code) {
       case "NOT_FOUND":
@@ -46,19 +52,32 @@ const DisplayPoll: NextPage<DisplayPollProps> = () => {
     }
   }
 
+  const setVoteMutation = trpc.useMutation(["poll.set-vote"]);
+
   const [userVote, setUserVote] = useState<string>();
   const chooseVote = (choiceId: string) => {
     setUserVote(choiceId);
     setValue("choiceId", choiceId);
+    console.log({ choiceId });
   };
+
   const {
     handleSubmit,
     setValue,
     formState: { errors },
   } = useForm<VotePollValues>();
-  const onSubmit: SubmitHandler<VotePollValues> = (data) => {
-    alert(JSON.stringify(data, null, 2));
+
+  const onSubmit: SubmitHandler<VotePollValues> = async (data) => {
+    // Vote!
+    const choice = await setVoteMutation.mutateAsync({
+      pollId: poll?.id!,
+      choiceId: data.choiceId,
+    });
+    if (choice) {
+      router.push(`/${poll?.id}/results`);
+    }
   };
+
   return (
     <main className="container mx-auto min-h-screen flex flex-col justify-center items-center">
       <Head>
@@ -93,14 +112,14 @@ const DisplayPoll: NextPage<DisplayPollProps> = () => {
                   disabled={setVoteMutation.isLoading}
                   className="rounded-full bg-blue-300 font-boldest w-full h-12"
                 >
-                  {!setVoteMutation.isLoading ? "Vote!" : "Voting.."}
+                  {!setVoteMutation.isLoading ? "Vote!" : <SpinningCircles />}
                 </button>
               </div>
             </div>
           </form>
         </>
       ) : (
-        "test"
+        <SpinningCircles />
       )}
     </main>
   );
@@ -111,7 +130,7 @@ export const getServerSideProps: GetServerSideProps<DisplayPollProps> = async ({
   res,
 }) => {
   const session = await getServerSession(req, res, authOptions);
-  return { props: { session, query: req.url } };
+  return { props: { session } };
 };
 
 export default DisplayPoll;

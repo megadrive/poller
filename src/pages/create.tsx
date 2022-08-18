@@ -12,7 +12,7 @@ import { trpc } from "../utils/trpc";
 import { useRouter } from "next/router";
 
 interface CreatePollProps {
-  session?: Session | null;
+  userSession?: Session | null;
 }
 
 interface FormValues {
@@ -21,20 +21,19 @@ interface FormValues {
   choice2: string;
 }
 
-const FormSchema = z
-  .object({
-    title: z.string().min(3, "Must be at least 3 characters"),
-    choice1: z.string().min(1, "Enter something."),
-    choice2: z.string().min(1, "Enter something."),
-    expires: z.string().optional(),
-  })
-  .required();
+const FormSchema = z.object({
+  title: z.string().min(3, "Must be at least 3 characters"),
+  choice1: z.string().min(1, "Enter something."),
+  choice2: z.string().min(1, "Enter something."),
+  expires: z.string().optional(),
+});
 
 const textInputStyle =
   "border-gray-300 border rounded-xl text-lg px-2 py-1 active:border-gray-700 my-2";
 
-const CreatePoll: NextPage<CreatePollProps> = () => {
+const CreatePoll: NextPage<CreatePollProps> = ({ userSession }) => {
   const router = useRouter();
+  console.log({ userSession });
   const {
     register,
     formState: { errors },
@@ -53,7 +52,7 @@ const CreatePoll: NextPage<CreatePollProps> = () => {
       choice2: data.choice2,
     });
 
-    if (!createPoll.isError) {
+    if (poll) {
       router.push(`/${poll.id}`);
     }
   };
@@ -88,15 +87,6 @@ const CreatePoll: NextPage<CreatePollProps> = () => {
               <input className={textInputStyle} {...register("choice2")} />
             </div>
           </div>
-          {/* <div>
-            <div className="text-xl text-right">Options</div>
-            <div>
-              <div className="text-red-500">
-                {errors.choice1?.message ?? ""}
-              </div>
-              <input className={textInputStyle} {...register("choice1")} />
-            </div>
-          </div> */}
           <div>
             <button
               type="submit"
@@ -116,8 +106,8 @@ export const getServerSideProps: GetServerSideProps<CreatePollProps> = async ({
   req,
   res,
 }) => {
-  const session = await getServerSession(req, res, authOptions);
-  return { props: { session } };
+  const userSession = await getServerSession(req, res, authOptions);
+  return { props: { userSession } };
 };
 
 export default CreatePoll;

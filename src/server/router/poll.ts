@@ -74,13 +74,36 @@ export const pollRouter = createRouter()
       };
     },
   })
+  .query("get-results", {
+    input: z.object({
+      pollId: z.string(),
+    }),
+    async resolve({ ctx, input }) {
+      const responses = await ctx.prisma.pollResponse.findMany({
+        where: {
+          pollId: input.pollId,
+        },
+      });
+
+      return responses.reduce<Record<string, number>>((acc, curr) => {
+        acc[curr.id] = acc[curr.id]++ ?? 0;
+
+        return acc;
+      }, {});
+    },
+  })
   .mutation("set-vote", {
     input: z.object({
       pollId: z.string(),
       choiceId: z.string(),
     }),
     async resolve({ ctx, input }) {
-      return null;
+      return await ctx.prisma.pollResponse.create({
+        data: {
+          pollId: input.pollId,
+          choiceId: input.choiceId,
+        },
+      });
     },
   })
   .middleware(({ ctx, next }) => {
